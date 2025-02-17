@@ -60,6 +60,12 @@ pip install winfspy cryptography sortedcontainers
 pyinstaller main.spec
 ```
 
+## pypy3 兼容性
+
+项目可以在 `pypy3.10` 下运行
+
+由于代码的问题，使用 `pypy` 会比 `Cpython` 慢很多，根据 2025.02.17 的实验，由`pypy3.10`执行加密归档任务只有 30MB/s，而 `Cpython` 可以达到 200MB/s。
+
 ## 许可证
 
 本程序遵循 [GPL-3.0-only](https://opensource.org/license/gpl-3-0/)许可证。
