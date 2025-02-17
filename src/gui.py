@@ -1,6 +1,6 @@
 import tkinter as tk
 from tkinter import messagebox, filedialog, ttk
-import os, sys, traceback, threading
+import os, sys, traceback, threading, queue
 
 from src.xypsa_generator import XYpsaGenerator
 from src.vfs import VirtualFileSystem
@@ -77,6 +77,8 @@ class XYpsaGeneratorApp:
         self.split_size_var = tk.StringVar(value="0")
 
         self.content_list = []
+        self.queue = queue.Queue()  # tkinter UI操作队列
+        self.whether_handle_queue = False  # 是否需要处理队列
 
         self.create_widgets()
 
@@ -184,6 +186,8 @@ class XYpsaGeneratorApp:
             self.root, text="启动", command=self.start_generation, padx=20
         )
         self._start_button.grid(row=9, column=0, columnspan=5, padx=10, pady=5)
+        # 加载中标签
+        self.loading_label = tk.Label(self.root, text="正在生成，请稍候...")
 
     def add_file(self):
         path = filedialog.askopenfilename(title="选择文件")
@@ -200,20 +204,7 @@ class XYpsaGeneratorApp:
     def start_generation(self):
         # 隐藏按钮的显示
         self._start_button.grid_forget()
-        # 工作线程
-        threading.Thread(target=self.start_generation_worker, daemon=True).start()
-
-    def start_generation_worker(self):
-        # 显示提示信息
-        info = tk.Label(self.root, text="正在生成，请稍候...")
-        info.grid(row=9, column=0, columnspan=5, padx=10, pady=5)
-        # 业务逻辑
-        self.start_generation_backend()
-        # 显示按钮
-        info.destroy()
-        self._start_button.grid(row=9, column=0, columnspan=5, padx=10, pady=5)
-
-    def start_generation_backend(self):
+        # 预处理
         mountpoint = self.mountpoint_var.get()
         work_mode = self.gen_work_mode.get()
         filename = self.filename_var.get()
@@ -227,6 +218,7 @@ class XYpsaGeneratorApp:
             )  # 转换为字节
         except ValueError:
             messagebox.showerror("错误", "分卷大小不是一个有效的数值！")
+            self._start_button.grid(row=9, column=0, columnspan=5, padx=10, pady=5)
             return
         if not_pre_lock:
             if not messagebox.askyesno(
@@ -234,8 +226,55 @@ class XYpsaGeneratorApp:
                 "不提前打开并锁定文件可能会因为其它进程对文件的读写而导致文件损坏，请谨慎使用！\n是否继续？",
                 icon="warning",
             ):
+                self._start_button.grid(row=9, column=0, columnspan=5, padx=10, pady=5)
                 return
+        # 显示提示信息
+        self.loading_label.grid(row=9, column=0, columnspan=5, padx=10, pady=5)
+        # 启动后台任务
+        self.whether_handle_queue = True
+        threading.Thread(
+            target=self.start_generation_backend,
+            args=(
+                mountpoint,
+                work_mode,
+                filename,
+                comment,
+                encryption_type,
+                password,
+                split_size,
+                not_pre_lock,
+            ),
+            daemon=True,
+        ).start()
+        # 启动队列处理
+        self.root.after(100, self.process_queue)
 
+    def process_queue(self):
+        try:
+            while True:
+                # 从队列中获取任务并执行
+                task = self.queue.get_nowait()
+                task()
+        except queue.Empty:
+            pass
+        finally:
+            # 定期检查队列
+            if self.whether_handle_queue:
+                self.root.after(300, self.process_queue)
+            else:
+                print("队列处理结束")
+
+    def start_generation_backend(
+        self,
+        mountpoint,
+        work_mode,
+        filename,
+        comment,
+        encryption_type,
+        password,
+        split_size,
+        not_pre_lock,
+    ):
         try:
             start_virtual_file_system(
                 mountpoint,
@@ -248,11 +287,29 @@ class XYpsaGeneratorApp:
                 split_size,
                 not_pre_lock,
             )
-            messagebox.showinfo("成功", "虚拟磁盘挂载成功")
+            self.queue.put(lambda: messagebox.showinfo("成功", "虚拟磁盘挂载成功"))
             # 设置按钮为禁止
-            self._start_button.config(state=tk.DISABLED)
+            self.queue.put(lambda: self._start_button.config(state=tk.DISABLED))
             # 开始汇报命中率
             threading.Timer(30.0, report_hit_rate).start()
+            # 显示按钮
+            self.queue.put(lambda: self.loading_label.grid_forget())
+            self.queue.put(
+                lambda: self._start_button.grid(
+                    row=9, column=0, columnspan=5, padx=10, pady=5
+                )
+            )
+            self.whether_handle_queue = False
         except Exception as e:
             error_msg = traceback.format_exc()
-            messagebox.showerror("错误", str(e) + "\n" + error_msg)
+            self.queue.put(
+                lambda: messagebox.showerror("错误", str(e) + "\n" + error_msg)
+            )
+            # 显示按钮
+            self.queue.put(lambda: self.loading_label.grid_forget())
+            self.queue.put(
+                lambda: self._start_button.grid(
+                    row=9, column=0, columnspan=5, padx=10, pady=5
+                )
+            )
+            self.whether_handle_queue = False

@@ -618,7 +618,7 @@ class XYpsaGenStream:
             # 校验文件大小
             if cur_file_size != file_size:
                 raise ValueError(
-                    f"File size mismatch: {self.indexes[entity_id-1]["name"]}"
+                    f"File size mismatch: {self.indexes[entity_id-1]['name']}"
                 )
             # 取出文件校验码
             checkcode = checkcode_ctx.finalize()
@@ -680,5 +680,5 @@ if __name__ == "__main__":
             f.write(chunk)
             print(f"写入 {len(chunk)} 字节")
     print(f"生成文件完成: {xypsa_file_name}")
-    print(f"实际大小: {os.path.getsize(xypsa_file_name+".xypsa")}")
+    print(f"实际大小: {os.path.getsize(xypsa_file_name+'.xypsa')}")
     print()
