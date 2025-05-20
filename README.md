@@ -51,12 +51,25 @@ ImHex 是一个十六进制编辑器，项目地址：https://github.com/WerWolv
 ## 安装依赖
 
 ```sh
+uv sync
+```
+
+或
+
+```sh
 pip install winfspy cryptography sortedcontainers
 ```
 
 ## 打包
 
 ```sh
+uvx pyinstaller main.spec
+```
+
+或
+
+```sh
+pip install pyinstaller
 pyinstaller main.spec
 ```
 
