@@ -301,10 +301,8 @@ class XYpsaGeneratorApp:
             )
             self.whether_handle_queue = False
         except Exception as e:
-            error_msg = traceback.format_exc()
-            self.queue.put(
-                lambda: messagebox.showerror("错误", str(e) + "\n" + error_msg)
-            )
+            error_msg = str(e) + "\n" + traceback.format_exc()
+            self.queue.put(lambda: messagebox.showerror("错误", error_msg))
             # 显示按钮
             self.queue.put(lambda: self.loading_label.grid_forget())
             self.queue.put(
