@@ -255,56 +255,72 @@ class XYpsaGUI:
             # 简单预估实体数量
             self.file_size_total = index_section_size // 50 + 1
             self.cur_size = 0
-            for index in index_gen:
-                parent_id = index["parent_id"]
-                if parent_id == 0:
-                    root_entity_count += 1
-                if index["type"] == 1:
-                    # 目录，需要计算路径
+            try:
+                for index in index_gen:
+                    parent_id = index["parent_id"]
                     if parent_id == 0:
-                        index["path"] = index["name"]
-                    else:
-                        index["path"] = os.path.join(
-                            indexes[parent_id]["path"], index["name"]
-                        )
-
-                if not extract_path:
-                    # 不解档才需要处理树状结构的显示
-                    parent_node = "" if parent_id == 0 else indexes[parent_id]["node"]
-                    if index["type"] == 0:
-                        type_str = "文件"
-                        if index["size"] < 1024:
-                            size_str = f"{index['size']}B"
-                        elif index["size"] < 1024 * 1024:
-                            size_str = f"{index['size']/1024:.3f}KB"
-                        elif index["size"] < 1024 * 1024 * 1024:
-                            size_str = f"{index['size']/1024/1024:.3f}MB"
+                        root_entity_count += 1
+                    if index["type"] == 1:
+                        # 目录，需要计算路径
+                        if parent_id == 0:
+                            index["path"] = index["name"]
                         else:
-                            size_str = f"{index['size']/1024/1024/1024:.3f}GB"
-                    else:
-                        type_str = "文件夹"
-                        size_str = ""
-                    # 时间格式化
-                    mtime_str = time.strftime(
-                        "%Y-%m-%d %H:%M:%S", time.localtime(index["mtime"] / 10000000)
-                    )
-                    node = self.tree.insert(
-                        parent_node,
-                        "end" if index["type"] == 0 else "0",
-                        text=index["name"],
-                        values=(
-                            type_str,
-                            mtime_str,
-                            size_str,
-                        ),
-                    )
-                    index["node"] = node
+                            index["path"] = os.path.join(
+                                indexes[parent_id]["path"], index["name"]
+                            )
 
-                # 存储实体信息
-                indexes[index["id"]] = index
-                # 进度更新
-                self.cur_size += 1
+                    if not extract_path:
+                        # 不解档才需要处理树状结构的显示
+                        parent_node = (
+                            "" if parent_id == 0 else indexes[parent_id]["node"]
+                        )
+                        if index["type"] == 0:
+                            type_str = "文件"
+                            if index["size"] < 1024:
+                                size_str = f"{index['size']}B"
+                            elif index["size"] < 1024 * 1024:
+                                size_str = f"{index['size']/1024:.3f}KB"
+                            elif index["size"] < 1024 * 1024 * 1024:
+                                size_str = f"{index['size']/1024/1024:.3f}MB"
+                            else:
+                                size_str = f"{index['size']/1024/1024/1024:.3f}GB"
+                        else:
+                            type_str = "文件夹"
+                            size_str = ""
+                        # 时间格式化
+                        mtime_str = time.strftime(
+                            "%Y-%m-%d %H:%M:%S",
+                            time.localtime(index["mtime"] / 10000000),
+                        )
+                        node = self.tree.insert(
+                            parent_node,
+                            "end" if index["type"] == 0 else "0",
+                            text=index["name"],
+                            values=(
+                                type_str,
+                                mtime_str,
+                                size_str,
+                            ),
+                        )
+                        index["node"] = node
 
+                    # 存储实体信息
+                    indexes[index["id"]] = index
+                    # 进度更新
+                    self.cur_size += 1
+            except XYpsaCheckError as e:
+                if e.code == 8 and encrypt_type == 1 and (not extract_path):
+                    # 这种情况即使目录结构校验码不匹配，也应该显示
+                    self.file_size_total = self.cur_size
+                    self.tree.grid(
+                        row=7, column=0, columnspan=2, sticky="nsew", padx=5, pady=5
+                    )
+                    messagebox.showinfo(
+                        "成功", "解析完成！不过因为无密码，无法验证文件是否损坏或被篡改"
+                    )
+                    return
+                else:
+                    raise e
             # 不需要解档的，在此停止
             self.file_size_total = self.cur_size
             self.tree.grid(row=7, column=0, columnspan=2, sticky="nsew", padx=5, pady=5)
