@@ -76,13 +76,13 @@ class XYpsaGeneratorApp:
         )
         tk.Radiobutton(
             self.root,
-            text="一般模式(10MB内存编织索引)",
+            text="一般模式(15MB内存编织索引)",
             variable=self.gen_work_mode,
             value=0,
         ).grid(row=2, column=0, columnspan=2, sticky="w", padx=10, pady=5)
         tk.Radiobutton(
             self.root,
-            text="大文件模式(100MB内存编织索引)",
+            text="大文件模式(150MB内存编织索引)",
             variable=self.gen_work_mode,
             value=1,
         ).grid(row=3, column=0, columnspan=2, sticky="w", padx=10, pady=5)

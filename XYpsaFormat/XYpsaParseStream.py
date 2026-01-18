@@ -70,7 +70,7 @@ class XYpsaParseStream:
     def start_parse(self, data: Generator[bytes | bytearray, None, None]) -> Tuple[
         Generator[Tuple[str, int | str | bytes | None], None, None],
         Generator[Dict[str, int | str], None, None],
-        Tuple[int, Generator[bytes, None, None]],
+        Generator[Tuple[int, Generator[bytes, None, None]], None, None],
     ]:
         """开始解档，返回三个生成器：元数据信息生成器、索引信息生成器、文件项生成器"""
         self.gen_state = 0

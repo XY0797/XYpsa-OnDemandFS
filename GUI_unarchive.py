@@ -238,6 +238,7 @@ class XYpsaGUI:
                     elif key == "comment":
                         key = "归档文件中的备注"
                     elif key == "index_size":
+                        assert type(value) == int
                         index_section_size = value
                     self.metadata_text.insert(tk.END, f"{key}: {value}\n")
             except XYpsaCheckError as e:
@@ -257,6 +258,8 @@ class XYpsaGUI:
             self.cur_size = 0
             try:
                 for index in index_gen:
+                    assert type(index["name"]) == str
+                    assert type(index["mtime"]) == int
                     parent_id = index["parent_id"]
                     if parent_id == 0:
                         root_entity_count += 1
@@ -268,7 +271,6 @@ class XYpsaGUI:
                             index["path"] = os.path.join(
                                 indexes[parent_id]["path"], index["name"]
                             )
-
                     if not extract_path:
                         # 不解档才需要处理树状结构的显示
                         parent_node = (
@@ -276,6 +278,7 @@ class XYpsaGUI:
                         )
                         if index["type"] == 0:
                             type_str = "文件"
+                            assert type(index["size"]) == int
                             if index["size"] < 1024:
                                 size_str = f"{index['size']}B"
                             elif index["size"] < 1024 * 1024:
@@ -294,7 +297,7 @@ class XYpsaGUI:
                         )
                         node = self.tree.insert(
                             parent_node,
-                            "end" if index["type"] == 0 else "0",
+                            "end" if index["type"] == 0 else 0,
                             text=index["name"],
                             values=(
                                 type_str,
