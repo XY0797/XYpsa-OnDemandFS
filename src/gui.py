@@ -23,8 +23,10 @@ def start_virtual_file_system(
     generator = XYpsaGenerator(filename, encryption_type, password)
     if work_mode == 1:
         generator.index_count = 7000
+        generator.cache_size = 100
     else:
         generator.index_count = 700
+        generator.cache_size = 20
     for item in content_list:
         if os.path.isfile(item):
             generator.add_file(item)
