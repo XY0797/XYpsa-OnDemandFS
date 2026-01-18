@@ -3,3 +3,4 @@ dist
 __pycache__
 uv.lock
 .venv
+rust_wheels

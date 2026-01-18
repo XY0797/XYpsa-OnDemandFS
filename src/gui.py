@@ -2,7 +2,7 @@ import tkinter as tk
 from tkinter import messagebox, filedialog, ttk
 import os, sys, traceback, threading, queue
 
-from src.xypsa_generator import XYpsaGenerator
+from xypsa import XYpsaGenerator
 from src.vfs import VirtualFileSystem
 
 vfs = None
@@ -19,48 +19,22 @@ def start_virtual_file_system(
     password,
     content_list,
     split_size,
-    not_pre_lock,
 ):
     generator = XYpsaGenerator(filename, encryption_type, password)
     if work_mode == 1:
-        generator.GENOBJAMOUNT = 100
+        generator.index_count = 7000
+    else:
+        generator.index_count = 700
     for item in content_list:
         if os.path.isfile(item):
             generator.add_file(item)
         elif os.path.isdir(item):
             generator.add_dir(item)
     generator.set_comment(comment)
-    no_access_list = generator.init(split_size, not_pre_lock)
-    no_access_len = len(no_access_list)
-    if no_access_len > 0:
-        file_path = os.path.join(BASE_DIR, "无权限访问列表.txt")
-        if os.path.exists(file_path):
-            os.remove(file_path)
-        for item in no_access_list:
-            with open(file_path, "a", encoding="utf-8") as f:
-                f.write(item + "\n")
-        messagebox.showwarning(
-            "警告",
-            f"有{no_access_len}个文件或文件夹无法访问，具体信息已存储到 {file_path} 中。",
-        )
-        os.startfile(file_path)
+    generator.init(split_size)
     global vfs
     vfs = VirtualFileSystem(mountpoint, generator)
     vfs.start()
-
-
-def report_hit_rate():
-    """报告命中率"""
-    global vfs
-    if vfs is not None:
-        eq_cnt = vfs.xypsa_generator.eq_cnt
-        total_cnt = vfs.xypsa_generator.total_cnt
-        if total_cnt == 0:
-            return
-        vfs.xypsa_generator.eq_cnt = 0
-        vfs.xypsa_generator.total_cnt = 0
-        print(f"命中率：{eq_cnt / total_cnt:.2%}({eq_cnt}/{total_cnt})")
-    threading.Timer(30.0, report_hit_rate).start()
 
 
 class XYpsaGeneratorApp:
@@ -72,7 +46,6 @@ class XYpsaGeneratorApp:
         self.gen_work_mode = tk.IntVar(value=0)
         self.filename_var = tk.StringVar(value="archive")
         self.encryption_var = tk.IntVar(value=0)
-        self.not_pre_lock_var = tk.BooleanVar(value=False)
         self.password_var = tk.StringVar()
         self.split_size_var = tk.StringVar(value="0")
 
@@ -103,13 +76,13 @@ class XYpsaGeneratorApp:
         )
         tk.Radiobutton(
             self.root,
-            text="一般模式(阿里/夸克/浏览器)",
+            text="一般模式(10MB内存编织索引)",
             variable=self.gen_work_mode,
             value=0,
         ).grid(row=2, column=0, columnspan=2, sticky="w", padx=10, pady=5)
         tk.Radiobutton(
             self.root,
-            text="百度网盘客户端模式(并行上传数量需设置为1)",
+            text="大文件模式(100MB内存编织索引)",
             variable=self.gen_work_mode,
             value=1,
         ).grid(row=3, column=0, columnspan=2, sticky="w", padx=10, pady=5)
@@ -158,10 +131,6 @@ class XYpsaGeneratorApp:
             variable=self.encryption_var,
             value=2,
         ).grid(row=4, column=3, columnspan=2, sticky="w", padx=10, pady=5)
-        # 是否不提前打开并锁定文件
-        tk.Checkbutton(
-            self.root, text="不提前打开并锁定文件", variable=self.not_pre_lock_var
-        ).grid(row=1, column=4, sticky="w", padx=10, pady=5)
         # 分卷大小输入框
         tk.Label(self.root, text="分卷大小（MB,0表示不分卷）:").grid(
             row=5, column=3, padx=10, pady=5, sticky="w"
@@ -211,7 +180,6 @@ class XYpsaGeneratorApp:
         comment = self.comment_text.get("1.0", "end-1c")
         encryption_type = self.encryption_var.get()
         password = self.password_var.get()
-        not_pre_lock = self.not_pre_lock_var.get()
         try:
             split_size = int(
                 float(self.split_size_var.get()) * 1024 * 1024
@@ -220,14 +188,6 @@ class XYpsaGeneratorApp:
             messagebox.showerror("错误", "分卷大小不是一个有效的数值！")
             self._start_button.grid(row=9, column=0, columnspan=5, padx=10, pady=5)
             return
-        if not_pre_lock:
-            if not messagebox.askyesno(
-                "警告",
-                "不提前打开并锁定文件可能会因为其它进程对文件的读写而导致文件损坏，请谨慎使用！\n是否继续？",
-                icon="warning",
-            ):
-                self._start_button.grid(row=9, column=0, columnspan=5, padx=10, pady=5)
-                return
         # 显示提示信息
         self.loading_label.grid(row=9, column=0, columnspan=5, padx=10, pady=5)
         # 启动后台任务
@@ -242,7 +202,6 @@ class XYpsaGeneratorApp:
                 encryption_type,
                 password,
                 split_size,
-                not_pre_lock,
             ),
             daemon=True,
         ).start()
@@ -273,7 +232,6 @@ class XYpsaGeneratorApp:
         encryption_type,
         password,
         split_size,
-        not_pre_lock,
     ):
         try:
             start_virtual_file_system(
@@ -285,13 +243,10 @@ class XYpsaGeneratorApp:
                 password,
                 self.content_list,
                 split_size,
-                not_pre_lock,
             )
             self.queue.put(lambda: messagebox.showinfo("成功", "虚拟磁盘挂载成功"))
             # 设置按钮为禁止
             self.queue.put(lambda: self._start_button.config(state=tk.DISABLED))
-            # 开始汇报命中率
-            threading.Timer(30.0, report_hit_rate).start()
             # 显示按钮
             self.queue.put(lambda: self.loading_label.grid_forget())
             self.queue.put(

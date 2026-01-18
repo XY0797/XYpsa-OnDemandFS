@@ -11,7 +11,6 @@ from winfspy import (
     NTStatusEndOfFile,
     NTStatusDirectoryNotEmpty,
     NTStatusNotADirectory,
-    NTStatusMediaWriteProtected,
     NTStatusObjectNameCollision,
     NTStatusAccessDenied,
 )
@@ -25,7 +24,7 @@ FspCleanupSetLastAccessTime = 0x20
 FspCleanupSetLastWriteTime = 0x40
 FspCleanupSetChangeTime = 0x80
 
-from src.xypsa_generator import XYpsaGenerator
+from xypsa import XYpsaGenerator
 
 
 def operation(fn):
@@ -75,7 +74,7 @@ class BaseFileObj:
     def get_file_info(self):
         return {
             "file_attributes": self.attributes,
-            "allocation_size": self.allocation_size,
+            "allocation_size": self.allocation_size,  # type: ignore 因为子类中有
             "file_size": self.file_size,
             "creation_time": self.creation_time,
             "last_access_time": self.last_access_time,
@@ -159,7 +158,9 @@ class OpenedObj:
 
 
 class SplitFileObj(BaseFileObj):
-    def __init__(self, path, security_descriptor, index, xypsa_generator):
+    def __init__(
+        self, path, security_descriptor, index, xypsa_generator: XYpsaGenerator
+    ):
         """分卷文件对象,index为从0开始的分卷号"""
         super().__init__(
             path, FILE_ATTRIBUTE.FILE_ATTRIBUTE_NORMAL, security_descriptor
@@ -185,7 +186,7 @@ class SplitFileObj(BaseFileObj):
 
 
 class FileObj(BaseFileObj):
-    def __init__(self, path, security_descriptor, xypsa_generator):
+    def __init__(self, path, security_descriptor, xypsa_generator: XYpsaGenerator):
         super().__init__(
             path, FILE_ATTRIBUTE.FILE_ATTRIBUTE_NORMAL, security_descriptor
         )
@@ -204,7 +205,7 @@ class FileObj(BaseFileObj):
 
 
 class XYpsaFileSystemOperations(BaseFileSystemOperations):
-    def __init__(self, xypsa_generator):
+    def __init__(self, xypsa_generator: XYpsaGenerator):
         super().__init__()
         self._root_path = PureWindowsPath("/")
         self._root_obj = FolderObj(
@@ -214,9 +215,11 @@ class XYpsaFileSystemOperations(BaseFileSystemOperations):
                 "O:BAG:BAD:P(A;;FA;;;SY)(A;;FA;;;BA)(A;;FA;;;WD)"
             ),
         )
-        self._entries = {self._root_path: self._root_obj}
+        self._entries: dict[PureWindowsPath, BaseFileObj] = {
+            self._root_path: self._root_obj
+        }
 
-        if xypsa_generator.split_size is None:
+        if xypsa_generator.split_size is None or xypsa_generator.split_count is None:
             # 创建归档文件
             xypsa_path = self._root_path / f"{xypsa_generator.filename}.xypsa"
             self._entries[xypsa_path] = FileObj(
@@ -401,16 +404,16 @@ class XYpsaFileSystemOperations(BaseFileSystemOperations):
 
     @operation
     def can_delete(self, file_context, file_name: str) -> None:
-        file_name = PureWindowsPath(file_name)
+        file_path = PureWindowsPath(file_name)
         try:
-            file_obj = self._entries[file_name]
+            file_obj = self._entries[file_path]
         except KeyError:
             raise NTStatusObjectNameNotFound
 
         if isinstance(file_obj, FolderObj):
             for entry in self._entries.keys():
                 try:
-                    if entry.relative_to(file_name).parts:
+                    if entry.relative_to(file_path).parts:
                         raise NTStatusDirectoryNotEmpty()
                 except ValueError:
                     continue

@@ -8,8 +8,12 @@ dependencies = [
     "cryptography>=46.0.3",
     "sortedcontainers>=2.4.0",
     "winfspy>=0.8.4",
+    "xypsa>=0.1",
 ]
 
 [[tool.uv.index]]
 url = "https://mirrors.aliyun.com/pypi/simple"
 default = true
+
+[tool.uv]
+find-links = ["./rust_wheels"]
