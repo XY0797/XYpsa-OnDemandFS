@@ -1,8 +1,12 @@
-from tkinter import messagebox, ttk, filedialog
+import os
+import re
+import threading
+import time
 import tkinter as tk
-import os, re, traceback, time, threading
+import traceback
+from tkinter import filedialog, messagebox, ttk
 
-from XYpsaFormat.XYpsaParseStream import XYpsaParseStream, XYpsaCheckError
+from XYpsaFormat.XYpsaParseStream import XYpsaCheckError, XYpsaParseStream
 
 
 def read_xypsa_file(file_path):
@@ -15,19 +19,21 @@ def read_split_xypsa_file(parent_path, file_name, part_count):
     part_count = int(part_count)
     for i in range(part_count):
         # 生成文件名
-        fpath = os.path.join(parent_path, f"{file_name}.{i+1}.{part_count}.part.xypsa")
+        fpath = os.path.join(
+            parent_path, f"{file_name}.{i + 1}.{part_count}.part.xypsa"
+        )
         # 是否存在
         while not os.path.exists(fpath):
             messagebox.showwarning(
                 "错误",
-                f"分卷文件 {file_name}.{i+1}.{part_count}.part.xypsa 不存在！",
+                f"分卷文件 {file_name}.{i + 1}.{part_count}.part.xypsa 不存在！",
             )
             if not messagebox.askyesno(
                 "询问？",
                 "是否继续解档？\n如果你补全了该文件，请点击是。如果要放弃解档，请点击否。",
             ):
                 raise FileNotFoundError(
-                    f"分卷文件 {file_name}.{i+1}.{part_count}.part.xypsa 不存在！"
+                    f"分卷文件 {file_name}.{i + 1}.{part_count}.part.xypsa 不存在！"
                 )
         with open(fpath, "rb") as f:
             while chunk := f.read(131072):  # 流式读取
@@ -168,11 +174,11 @@ class XYpsaGUI:
                 if speed_B < 1024:
                     speed_str = f"{speed_B:.3f}B/s"
                 elif speed_B < 1024 * 1024:
-                    speed_str = f"{speed_B/1024:.3f}KB/s"
+                    speed_str = f"{speed_B / 1024:.3f}KB/s"
                 elif speed_B < 1024 * 1024 * 1024:
-                    speed_str = f"{speed_B/1024/1024:.3f}MB/s"
+                    speed_str = f"{speed_B / 1024 / 1024:.3f}MB/s"
                 else:
-                    speed_str = f"{speed_B/1024/1024/1024:.3f}GB/s"
+                    speed_str = f"{speed_B / 1024 / 1024 / 1024:.3f}GB/s"
                 self.speed_label.config(text=f"速度：{speed_str}")
         td.join()
         self.cur_size = None
@@ -238,7 +244,7 @@ class XYpsaGUI:
                     elif key == "comment":
                         key = "归档文件中的备注"
                     elif key == "index_size":
-                        assert type(value) == int
+                        assert type(value) is int
                         index_section_size = value
                     self.metadata_text.insert(tk.END, f"{key}: {value}\n")
             except XYpsaCheckError as e:
@@ -258,8 +264,8 @@ class XYpsaGUI:
             self.cur_size = 0
             try:
                 for index in index_gen:
-                    assert type(index["name"]) == str
-                    assert type(index["mtime"]) == int
+                    assert type(index["name"]) is str
+                    assert type(index["mtime"]) is int
                     parent_id = index["parent_id"]
                     if parent_id == 0:
                         root_entity_count += 1
@@ -278,15 +284,15 @@ class XYpsaGUI:
                         )
                         if index["type"] == 0:
                             type_str = "文件"
-                            assert type(index["size"]) == int
+                            assert type(index["size"]) is int
                             if index["size"] < 1024:
                                 size_str = f"{index['size']}B"
                             elif index["size"] < 1024 * 1024:
-                                size_str = f"{index['size']/1024:.3f}KB"
+                                size_str = f"{index['size'] / 1024:.3f}KB"
                             elif index["size"] < 1024 * 1024 * 1024:
-                                size_str = f"{index['size']/1024/1024:.3f}MB"
+                                size_str = f"{index['size'] / 1024 / 1024:.3f}MB"
                             else:
-                                size_str = f"{index['size']/1024/1024/1024:.3f}GB"
+                                size_str = f"{index['size'] / 1024 / 1024 / 1024:.3f}GB"
                         else:
                             type_str = "文件夹"
                             size_str = ""

@@ -3,19 +3,20 @@ from functools import wraps
 from pathlib import PureWindowsPath
 
 from winfspy import (
-    FILE_ATTRIBUTE,
     CREATE_FILE_CREATE_OPTIONS,
-    FileSystem,
+    FILE_ATTRIBUTE,
     BaseFileSystemOperations,
-    NTStatusObjectNameNotFound,
-    NTStatusEndOfFile,
+    FileSystem,
+    NTStatusAccessDenied,
     NTStatusDirectoryNotEmpty,
+    NTStatusEndOfFile,
     NTStatusNotADirectory,
     NTStatusObjectNameCollision,
-    NTStatusAccessDenied,
+    NTStatusObjectNameNotFound,
 )
-from winfspy.plumbing.win32_filetime import filetime_now
 from winfspy.plumbing.security_descriptor import SecurityDescriptor
+from winfspy.plumbing.win32_filetime import filetime_now
+from xypsa import XYpsaGenerator
 
 FspCleanupDelete = 0x01
 FspCleanupSetAllocationSize = 0x02
@@ -24,7 +25,6 @@ FspCleanupSetLastAccessTime = 0x20
 FspCleanupSetLastWriteTime = 0x40
 FspCleanupSetChangeTime = 0x80
 
-from xypsa import XYpsaGenerator
 
 
 def operation(fn):
@@ -88,7 +88,6 @@ class BaseFileObj:
 
 
 class memFileObj(BaseFileObj):
-
     allocation_unit = 4096
 
     def __init__(self, path, attributes, security_descriptor, allocation_size=0):
@@ -476,7 +475,6 @@ class XYpsaFileSystemOperations(BaseFileSystemOperations):
 
         # Delete
         if flags & FspCleanupDelete:
-
             # Check for non-empty direcory
             if any(key.parent == file_obj.path for key in self._entries):
                 return

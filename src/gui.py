@@ -1,8 +1,13 @@
+import os
+import queue
+import sys
+import threading
 import tkinter as tk
-from tkinter import messagebox, filedialog, ttk
-import os, sys, traceback, threading, queue
+import traceback
+from tkinter import filedialog, messagebox, ttk
 
 from xypsa import XYpsaGenerator
+
 from src.vfs import VirtualFileSystem
 
 vfs = None

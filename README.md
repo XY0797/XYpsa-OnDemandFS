@@ -64,7 +64,7 @@ pip install winfspy cryptography sortedcontainers
 
 ```sh
 uv pip install pyinstaller
-pyinstaller main.spec
+uv run pyinstaller main.spec
 ```
 
 或

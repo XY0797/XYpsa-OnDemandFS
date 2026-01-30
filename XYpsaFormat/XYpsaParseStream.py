@@ -1,5 +1,7 @@
 import struct
-from typing import Generator, Tuple, Dict
+from typing import Dict, Generator, Tuple
+
+from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes, hmac
 from cryptography.hazmat.primitives.ciphers import (
     Cipher,
@@ -7,7 +9,6 @@ from cryptography.hazmat.primitives.ciphers import (
     algorithms,
     modes,
 )
-from cryptography.hazmat.backends import default_backend
 
 
 class XYpsaInvalidIterationSequenceError(Exception):
@@ -67,7 +68,9 @@ class XYpsaParseStream:
         """设置迭代文件数据时返回的数据块大小"""
         self.block_size = block_size
 
-    def start_parse(self, data: Generator[bytes | bytearray, None, None]) -> Tuple[
+    def start_parse(
+        self, data: Generator[bytes | bytearray, None, None]
+    ) -> Tuple[
         Generator[Tuple[str, int | str | bytes | None], None, None],
         Generator[Dict[str, int | str], None, None],
         Generator[Tuple[int, Generator[bytes, None, None]], None, None],
